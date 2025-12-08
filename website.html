@@ -10,17 +10,117 @@
       box-sizing: border-box;
     }
 
+    :root {
+      --ai-strip-height: 64px;
+      --ai-strip-bg: rgba(3, 5, 16, 0.95);
+    }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       overflow: hidden;
       background: radial-gradient(circle at top, #1a2340, #050608 55%);
       color: #f5f5f5;
+      padding-top: var(--ai-strip-height);
     }
 
     canvas#bg {
       position: fixed;
       inset: 0;
       display: block;
+    }
+
+    .ai-strip {
+      position: fixed;
+      inset: 0 0 auto 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 24px;
+      min-height: var(--ai-strip-height);
+      background: var(--ai-strip-bg);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+      z-index: 3;
+      pointer-events: auto;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .ai-strip__label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .ai-strip__label::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #52ffcb;
+      box-shadow: 0 0 12px rgba(82, 255, 203, 0.9);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    .ai-strip__ticker {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      pointer-events: none;
+    }
+
+    .ticker-track {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      white-space: nowrap;
+      animation: ticker 36s linear infinite;
+    }
+
+    .ai-strip:hover .ticker-track {
+      animation-play-state: paused;
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      letter-spacing: 0.03em;
+      padding-right: 32px;
+      color: #e4e8ff;
+      text-transform: none;
+    }
+
+    .ticker-item::before {
+      content: attr(data-kind);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .ticker-item--news::before {
+      background: rgba(79, 195, 247, 0.18);
+      color: #53c8ff;
+    }
+
+    .ticker-item--quote::before {
+      background: rgba(186, 104, 200, 0.22);
+      color: #f3a0ff;
+    }
+
+    .ai-strip__status {
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      opacity: 0.7;
     }
 
     .ui-overlay {
@@ -30,7 +130,8 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 24px;
+      padding: calc(var(--ai-strip-height) + 16px) 24px 24px 24px;
+      z-index: 2;
     }
 
     .ui-top {
@@ -107,9 +208,41 @@
       opacity: 0;
       transition: opacity 0.1s ease;
     }
+
+    @keyframes ticker {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+      100% {
+        opacity: 0.4;
+        transform: scale(0.9);
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="ai-strip" aria-live="polite">
+    <div class="ai-strip__label">Synth AI • Interactive Tech Scan</div>
+    <div class="ai-strip__ticker">
+      <div id="ticker-track" class="ticker-track" data-state="boot"></div>
+    </div>
+    <div class="ai-strip__status" id="ticker-status">Booting agent...</div>
+  </div>
+
   <canvas id="bg"></canvas>
 
   <div class="ui-overlay">
@@ -146,6 +279,131 @@
     // -------------------------------------------------------------
     const MODEL_URL =
       "https://raw.githubusercontent.com/elleyale/uttertosh/main/assets/pod1.glb";
+    const AI_REFRESH_INTERVAL = 180000; // 3 minutes
+
+    const tickerTrack = document.getElementById("ticker-track");
+    const tickerStatus = document.getElementById("ticker-status");
+
+    const quoteLibrary = [
+      {
+        text: "Interfaces are conversations; make them worthy of attention.",
+        source: "Brenda Laurel · Computers as Theatre",
+      },
+      {
+        text: "Interactivity succeeds when it rewards curiosity with clarity.",
+        source: "John Maeda · Laws of Simplicity",
+      },
+      {
+        text: "Every pixel a person touches should respond with purpose.",
+        source: "Irene Au · Design Better",
+      },
+      {
+        text: "Technology feels alive when feedback arrives at the speed of thought.",
+        source: "Bret Victor · Inventing on Principle",
+      },
+      {
+        text: "Play is how humans negotiate the future of interfaces.",
+        source: "Katie Salen · Rules of Play",
+      },
+    ];
+
+    async function fetchInteractiveNews(limit = 6) {
+      const endpoint = `https://hn.algolia.com/api/v1/search_by_date?query=interactive%20technology&tags=story&hitsPerPage=${limit}`;
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        throw new Error(`News request failed with status ${response.status}`);
+      }
+
+      const payload = await response.json();
+      return (payload.hits || [])
+        .map((hit) => {
+          const title = hit.title || hit.story_title;
+          if (!title) return null;
+
+          const url = hit.url || hit.story_url || "";
+          let host = "";
+
+          if (url) {
+            try {
+              host = new URL(url).hostname.replace(/^www\./, "");
+            } catch (err) {
+              host = "hn.algolia.com";
+            }
+          }
+
+          return {
+            type: "news",
+            text: `${title}${host ? ` · ${host}` : ""}`,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    function getQuoteBatch(count = 3) {
+      const pool = [...quoteLibrary];
+      const picks = [];
+
+      while (pool.length && picks.length < count) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picks.push(pool.splice(idx, 1)[0]);
+      }
+
+      return picks.map((quote) => ({
+        type: "quote",
+        text: `"${quote.text}" — ${quote.source}`,
+      }));
+    }
+
+    function renderTickerEntries(entries) {
+      if (!tickerTrack) return;
+      tickerTrack.innerHTML = "";
+
+      const safeEntries = entries.length
+        ? entries
+        : [
+            {
+              type: "news",
+              text: "Awaiting live interactive-tech briefs · standby",
+            },
+          ];
+
+      const duplicated = safeEntries.concat(safeEntries);
+
+      duplicated.forEach((entry) => {
+        const span = document.createElement("span");
+        span.className = `ticker-item ticker-item--${entry.type}`;
+        span.dataset.kind = entry.type === "news" ? "NEWS" : "QUOTE";
+        span.textContent = entry.text;
+        tickerTrack.appendChild(span);
+      });
+    }
+
+    async function hydrateTicker() {
+      if (!tickerTrack || !tickerStatus) return;
+      tickerStatus.textContent = "Synthesizing intel...";
+
+      try {
+        const [newsItems, quoteItems] = await Promise.all([
+          fetchInteractiveNews(),
+          Promise.resolve(getQuoteBatch(3)),
+        ]);
+
+        const feed = [...newsItems.slice(0, 5), ...quoteItems];
+        renderTickerEntries(feed);
+        tickerStatus.textContent = `AI agent live · ${new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`;
+      } catch (error) {
+        console.error("Ticker hydration failed:", error);
+        renderTickerEntries(getQuoteBatch(4));
+        tickerStatus.textContent = "AI agent offline · cached insights";
+      }
+    }
+
+    hydrateTicker();
+    setInterval(hydrateTicker, AI_REFRESH_INTERVAL);
 
     // -------------------------------------------------------------
     // BASIC THREE SETUP
@@ -176,6 +434,24 @@
     controls.minDistance = 3;
     controls.maxDistance = 12;
     controls.maxPolarAngle = Math.PI * 0.9;
+
+    const idleState = {
+      lastInteraction: performance.now(),
+      blend: 1,
+      threshold: 4000,
+    };
+
+    function registerInteraction() {
+      idleState.lastInteraction = performance.now();
+    }
+
+    controls.addEventListener("start", registerInteraction);
+    controls.addEventListener("end", registerInteraction);
+
+    ["pointerdown", "wheel", "touchstart"].forEach((eventName) =>
+      window.addEventListener(eventName, registerInteraction, { passive: true })
+    );
+    window.addEventListener("keydown", registerInteraction);
 
     // -------------------------------------------------------------
     // LIGHTING (TWO MODES)
@@ -422,14 +698,25 @@
     function animate() {
       requestAnimationFrame(animate);
 
-      const t = clock.getElapsedTime();
+      const delta = clock.getDelta();
+      const t = clock.elapsedTime;
 
-      // Bouncy Nexus
-      nexusGroup.position.y = Math.sin(t * 2.0) * 0.15 + 0.5;
-      ring.rotation.z += 0.003;
+      const idle =
+        performance.now() - idleState.lastInteraction > idleState.threshold;
+      idleState.blend = THREE.MathUtils.damp(
+        idleState.blend,
+        idle ? 1 : 0,
+        3,
+        delta
+      );
+
+      const bounceOffset = Math.sin(t * 2.0) * 0.15 * idleState.blend;
+      nexusGroup.position.y = 0.5 + bounceOffset;
+      ring.rotation.z += 0.003 * (0.6 + 0.4 * idleState.blend);
 
       modules.forEach((m, i) => {
-        m.position.y = moduleY + Math.sin(t * 2 + i) * 0.08;
+        const moduleBounce = Math.sin(t * 2 + i) * 0.08 * idleState.blend;
+        m.position.y = moduleY + moduleBounce;
       });
 
       // Hover / raycast

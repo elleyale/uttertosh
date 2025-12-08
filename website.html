@@ -1,510 +1,956 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Nexus Landing Page</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Tech Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: radial-gradient(circle at top, #161b3b 0%, #05060c 58%);
+        --fg: #f7f9ff;
+        --muted: rgba(247, 249, 255, 0.64);
+        --outline: rgba(255, 255, 255, 0.18);
+        --glass: rgba(8, 12, 32, 0.55);
+        --glass-strong: rgba(14, 20, 44, 0.8);
+        --accent: #77ffe2;
+        --accent-2: #bc9aff;
+        --danger: #ff8f70;
+        --ticker-height: 52px;
+      }
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      overflow: hidden;
-      background: radial-gradient(circle at top, #1a2340, #050608 55%);
-      color: #f5f5f5;
-    }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    canvas#bg {
-      position: fixed;
-      inset: 0;
-      display: block;
-    }
+      body {
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        min-height: 100vh;
+        overflow: hidden;
+        padding-top: calc(var(--ticker-height) + 82px);
+      }
 
-    .ui-overlay {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 24px;
-    }
+      canvas#bg {
+        position: fixed;
+        inset: 0;
+        display: block;
+      }
 
-    .ui-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      max-width: 960px;
-    }
+      .ticker {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--ticker-height);
+        background: linear-gradient(90deg, rgba(12, 18, 34, 0.85), rgba(9, 30, 50, 0.85));
+        border-bottom: 1px solid var(--outline);
+        overflow: hidden;
+        z-index: 10;
+        backdrop-filter: blur(14px);
+      }
 
-    .ui-title {
-      pointer-events: auto;
-    }
+      .ticker::after,
+      .ticker::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        width: 140px;
+        height: 100%;
+        pointer-events: none;
+        z-index: 2;
+      }
 
-    .ui-title h1 {
-      font-size: 32px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
+      .ticker::before {
+        left: 0;
+        background: linear-gradient(90deg, #05060c, transparent);
+      }
 
-    .ui-title p {
-      opacity: 0.8;
-      margin-top: 8px;
-      max-width: 420px;
-      font-size: 14px;
-    }
+      .ticker::after {
+        right: 0;
+        background: linear-gradient(-90deg, #05060c, transparent);
+      }
 
-    .ui-controls {
-      pointer-events: auto;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+      .ticker-track {
+        display: flex;
+        gap: 32px;
+        align-items: center;
+        height: 100%;
+        animation: ticker-scroll 28s linear infinite;
+        width: max-content;
+        padding-left: 140px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+      }
 
-    button {
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      padding: 8px 16px;
-      font-size: 13px;
-      background: rgba(0, 0, 0, 0.4);
-      color: inherit;
-      cursor: pointer;
-      backdrop-filter: blur(12px);
-      transition: border-color 0.2s ease, background 0.2s ease, transform 0.1s ease;
-    }
+      .ticker-track:hover {
+        animation-play-state: paused;
+      }
 
-    button:hover {
-      border-color: rgba(255, 255, 255, 0.7);
-      background: rgba(255, 255, 255, 0.06);
-      transform: translateY(-1px);
-    }
+      .ticker-item {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--muted);
+        opacity: 0.9;
+      }
 
-    .ui-bottom {
-      pointer-events: none;
-      font-size: 12px;
-      opacity: 0.65;
-    }
+      .ticker-item::before {
+        content: attr(data-type);
+        font-size: 0.65rem;
+        letter-spacing: 0.08em;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--accent);
+      }
 
-    .ui-bottom span {
-      pointer-events: auto;
-    }
+      @keyframes ticker-scroll {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
 
-    .tooltip {
-      position: fixed;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #fff;
-      font-size: 11px;
-      pointer-events: none;
-      transform: translate(-50%, -150%);
-      white-space: nowrap;
-      opacity: 0;
-      transition: opacity 0.1s ease;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="bg"></canvas>
+      .agent-panel {
+        position: fixed;
+        top: calc(var(--ticker-height) + 16px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(1040px, 92vw);
+        border-radius: 32px;
+        padding: 28px 32px;
+        background: var(--glass);
+        border: 1px solid var(--outline);
+        backdrop-filter: blur(18px);
+        display: grid;
+        grid-template-columns: minmax(0, 2.2fr) minmax(260px, 1fr);
+        gap: 24px;
+        z-index: 9;
+      }
 
-  <div class="ui-overlay">
-    <div class="ui-top">
-      <div class="ui-title">
-        <h1>NEXUS</h1>
-        <p>
-          Central pod of the experience. Hover and click the modules to explore
-          Computer, Scanner, Avatar, and Arcade systems.
+      .agent-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border: 1px solid var(--outline);
+        border-radius: 999px;
+        font-size: 0.8rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 12px var(--accent);
+        animation: pulse 2.6s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(0.6);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.6);
+          opacity: 0.8;
+        }
+      }
+
+      .agent-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 12px;
+      }
+
+      .agent-updated {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.25em;
+        color: var(--muted);
+      }
+
+      .agent-panel h1 {
+        font-size: clamp(1.4rem, 2vw, 1.8rem);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+
+      #agent-summary {
+        color: var(--muted);
+        line-height: 1.5;
+        font-size: 0.95rem;
+        margin-bottom: 18px;
+      }
+
+      #agent-insights {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      #agent-insights li {
+        display: grid;
+        grid-template-columns: 120px 1fr auto;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.9rem;
+      }
+
+      #agent-insights li strong {
+        color: var(--accent);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+      }
+
+      #agent-insights li time {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .agent-side {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .quote-box {
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid var(--outline);
+        background: var(--glass-strong);
+        min-height: 140px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: opacity 0.25s ease;
+      }
+
+      .quote-box.fading {
+        opacity: 0.4;
+      }
+
+      .quote-box p {
+        font-size: 0.98rem;
+        color: var(--fg);
+        line-height: 1.4;
+      }
+
+      .quote-box span {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+      }
+
+      .agent-side button {
+        padding: 10px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: transparent;
+        color: var(--fg);
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: background 0.2s ease, border-color 0.2s ease;
+      }
+
+      .agent-side button:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.6);
+      }
+
+      .agent-side button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .ui-overlay {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 32px;
+      }
+
+      .ui-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        max-width: 1024px;
+        margin: 0 auto auto;
+      }
+
+      .ui-title {
+        pointer-events: auto;
+        max-width: 520px;
+        background: rgba(0, 0, 0, 0.25);
+        padding: 16px 20px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .ui-title h2 {
+        font-size: 28px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .ui-title p {
+        opacity: 0.85;
+        margin-top: 8px;
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .ui-controls {
+        pointer-events: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
+        flex-wrap: nowrap;
+      }
+
+      button {
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        padding: 10px 18px;
+        font-size: 0.82rem;
+        background: rgba(0, 0, 0, 0.36);
+        color: inherit;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        transition: border-color 0.2s ease, background 0.2s ease, transform 0.1s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+      }
+
+      button:hover {
+        border-color: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.06);
+        transform: translateY(-1px);
+      }
+
+      .ui-bottom {
+        pointer-events: auto;
+        font-size: 0.75rem;
+        opacity: 0.7;
+        align-self: center;
+        margin-top: auto;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+      }
+
+      .tooltip {
+        position: fixed;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        font-size: 0.75rem;
+        pointer-events: none;
+        transform: translate(-50%, -150%);
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.1s ease;
+        z-index: 11;
+      }
+
+      @media (max-width: 920px) {
+        body {
+          padding-top: calc(var(--ticker-height) + 260px);
+        }
+
+        .agent-panel {
+          top: calc(var(--ticker-height) + 12px);
+          grid-template-columns: 1fr;
+          gap: 18px;
+          padding: 22px;
+        }
+
+        #agent-insights li {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+
+        .ui-top {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .ui-controls {
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="bg"></canvas>
+
+    <div class="ticker" id="news-ticker">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-item" data-type="INIT">
+          Initializing interactive tech brief...
+        </span>
+        <span class="ticker-item" data-type="QUOTE">
+          Listening for new insights in immersive experience design.
+        </span>
+      </div>
+    </div>
+
+    <section class="agent-panel" id="agent-panel">
+      <div class="agent-core">
+        <div class="agent-head">
+          <div class="agent-chip">
+            <span class="status-dot"></span>
+            <span>Neural Scout</span>
+          </div>
+          <span class="agent-updated" id="agent-updated">syncing…</span>
+        </div>
+        <h1>Interactive Tech Pulse</h1>
+        <p id="agent-summary">
+          Calibrating sensors. The AI courier is gathering immersive interaction intel.
         </p>
+        <ul id="agent-insights">
+          <li>
+            <strong>Signal</strong>
+            <span>Awaiting first packet…</span>
+            <time>now</time>
+          </li>
+        </ul>
       </div>
+      <div class="agent-side">
+        <div class="quote-box" id="quote-box">
+          <p>“We feel before we understand. Interface design should honor that.”</p>
+          <span>— Interaction Design Manifesto</span>
+        </div>
+        <button id="refresh-intel">Refresh Briefing</button>
+      </div>
+    </section>
 
-      <div class="ui-controls">
-        <button id="toggle-lighting">Toggle Lighting Mode</button>
-        <button id="zoom-nexus">Focus Nexus</button>
-        <button id="reset-camera">Reset Camera</button>
+    <div class="ui-overlay">
+      <div class="ui-top">
+        <div class="ui-title">
+          <h2>Interactive Systems Hub</h2>
+          <p>
+            Rotate, zoom, and explore the central pod. When you glance away, the hub
+            floats gently in idle mode — engage to steady it, release to watch it
+            breathe again.
+          </p>
+        </div>
+        <div class="ui-controls">
+          <button id="toggle-lighting">Toggle Lighting Mode</button>
+          <button id="zoom-nexus">Focus Nexus</button>
+          <button id="reset-camera">Reset Camera</button>
+        </div>
+      </div>
+      <div class="ui-bottom">
+        Drag to orbit · Scroll to zoom · Right-click to pan
       </div>
     </div>
 
-    <div class="ui-bottom">
-      <span>Tip: drag to orbit, scroll to zoom, right-click to pan.</span>
-    </div>
-  </div>
+    <div id="tooltip" class="tooltip"></div>
 
-  <div id="tooltip" class="tooltip"></div>
+    <script type="module">
+      import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+      import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+      import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 
-  <script type="module">
-    import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
-    import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-    import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+      // -------------------------------------------------------------
+      // DATA + DOM REFERENCES FOR AI AGENT STRIPE
+      // -------------------------------------------------------------
+      const FALLBACK_NEWS = [
+        {
+          title: "Spatial prototyping labs blend haptics with AR sandboxes",
+          source: "SenseBridge Lab",
+          ago: "2h ago",
+        },
+        {
+          title: "Museums trial gesture-driven, AI-curated exhibits",
+          source: "Immersive Europe",
+          ago: "4h ago",
+        },
+        {
+          title: "Mixed reality hubs add volumetric capture lounges",
+          source: "Vector Field Studio",
+          ago: "6h ago",
+        },
+        {
+          title: "Classrooms adopt shared holographic work surfaces",
+          source: "CampusXR",
+          ago: "9h ago",
+        },
+      ];
 
-    // -------------------------------------------------------------
-    // CONFIG
-    // -------------------------------------------------------------
-    const MODEL_URL =
-      "https://raw.githubusercontent.com/elleyale/uttertosh/main/assets/pod1.glb";
+      const QUOTES = [
+        {
+          text: "Interaction is the conversation between intention and response.",
+          author: "Bret Victor",
+        },
+        {
+          text: "People remember worlds they can touch, not screens they scroll.",
+          author: "Ayah Bdeir",
+        },
+        {
+          text: "The future UI pairs intuition with computational empathy.",
+          author: "Neri Oxman",
+        },
+        {
+          text: "Responsive spaces are instruments; users become performers.",
+          author: "Golan Levin",
+        },
+      ];
 
-    // -------------------------------------------------------------
-    // BASIC THREE SETUP
-    // -------------------------------------------------------------
-    const canvas = document.getElementById("bg");
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      const tickerTrack = document.getElementById("ticker-track");
+      const summaryEl = document.getElementById("agent-summary");
+      const insightsList = document.getElementById("agent-insights");
+      const quoteBox = document.getElementById("quote-box");
+      const updatedStamp = document.getElementById("agent-updated");
+      const refreshBtn = document.getElementById("refresh-intel");
 
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x050608, 0.15);
+      const HN_API =
+        "https://hn.algolia.com/api/v1/search?query=interactive%20technology&tags=story&hitsPerPage=6";
 
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    );
-    camera.position.set(4.5, 3, 7);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.target.set(0, 0.75, 0);
-    controls.minDistance = 3;
-    controls.maxDistance = 12;
-    controls.maxPolarAngle = Math.PI * 0.9;
-
-    // -------------------------------------------------------------
-    // LIGHTING (TWO MODES)
-    // -------------------------------------------------------------
-    const lightingState = { mode: "day" };
-
-    const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x050608, 1.0);
-    hemiLight.position.set(0, 4, 0);
-    scene.add(hemiLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
-    dirLight.position.set(5, 8, 3);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
-    scene.add(dirLight);
-
-    const rimLight = new THREE.DirectionalLight(0x66aaff, 0.4);
-    rimLight.position.set(-4, 3, -6);
-    scene.add(rimLight);
-
-    function applyLightingMode() {
-      if (lightingState.mode === "day") {
-        hemiLight.intensity = 1.0;
-        dirLight.intensity = 1.2;
-        rimLight.intensity = 0.4;
-        renderer.setClearColor(0x050608, 1);
-      } else {
-        hemiLight.intensity = 0.3;
-        dirLight.intensity = 0.7;
-        rimLight.intensity = 0.7;
-        renderer.setClearColor(0x020205, 1);
+      async function fetchInteractiveNews() {
+        try {
+          const res = await fetch(HN_API);
+          const payload = await res.json();
+          const hits = Array.isArray(payload?.hits) ? payload.hits : [];
+          if (!hits.length) throw new Error("no hits");
+          return hits.map((hit) => {
+            const created = new Date(hit.created_at);
+            return {
+              title: hit.title || hit.story_title || "Signal detected",
+              source: hit.author || "Interactive",
+              ago: formatAgo(created),
+            };
+          });
+        } catch (error) {
+          console.warn("Falling back to local intel", error);
+          return FALLBACK_NEWS;
+        }
       }
-    }
-    applyLightingMode();
 
-    // Ground
-    const groundGeo = new THREE.CircleGeometry(8, 64);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x06070b,
-      roughness: 0.95,
-      metalness: 0.1,
-    });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
+      function formatAgo(date) {
+        const now = Date.now();
+        const deltaMin = Math.max(1, Math.floor((now - date.getTime()) / 60000));
+        if (deltaMin < 60) return `${deltaMin}m ago`;
+        const deltaHr = Math.floor(deltaMin / 60);
+        if (deltaHr < 24) return `${deltaHr}h ago`;
+        return `${Math.floor(deltaHr / 24)}d ago`;
+      }
 
-    // -------------------------------------------------------------
-    // NEXUS GROUP + GLB MODEL
-    // -------------------------------------------------------------
-    const nexusGroup = new THREE.Group();
-    scene.add(nexusGroup);
+      function buildSummary(items) {
+        if (!items.length) {
+          return "Signal lines are quiet. The agent is listening for interactive tech breakthroughs.";
+        }
+        const highlights = items
+          .slice(0, 2)
+          .map((item) => item.title.split(" ").slice(0, 5).join(" "));
+        return `Agent parsed ${items.length}+ immersive tech threads. Highlights: ${highlights.join(
+          " | "
+        )}.`;
+      }
 
-    // Ring around nexus (simple extra detail)
-    const ringGeo = new THREE.TorusGeometry(1.8, 0.04, 16, 80);
-    const ringMat = new THREE.MeshStandardMaterial({
-      color: 0x7bdcff,
-      metalness: 0.8,
-      roughness: 0.1,
-      emissive: 0x05263a,
-      emissiveIntensity: 0.8,
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.castShadow = true;
-    nexusGroup.add(ring);
-
-    let nexusCoreObject = null; // will reference the GLB root
-
-    const loader = new GLTFLoader();
-    loader.load(
-      MODEL_URL,
-      (gltf) => {
-        const model = gltf.scene;
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-
-            // Make sure emissive exists for hover highlight
-            if (child.material && !child.material.emissive) {
-              child.material.emissive = new THREE.Color(0x000000);
-            }
-          }
+      function renderInsights(items) {
+        insightsList.innerHTML = "";
+        const source = items.length ? items : FALLBACK_NEWS;
+        source.slice(0, 3).forEach((item) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <strong>${item.source}</strong>
+            <span>${item.title}</span>
+            <time>${item.ago}</time>
+          `;
+          insightsList.appendChild(li);
         });
-
-        // Adjust scale / position as needed
-        model.scale.set(1.2, 1.2, 1.2);
-        model.position.set(0, 0, 0);
-        model.rotation.y = Math.PI; // tweak if needed
-
-        model.userData = {
-          type: "nexus",
-          label: "Nexus Pod",
-        };
-
-        nexusGroup.add(model);
-        nexusCoreObject = model;
-      },
-      undefined,
-      (err) => {
-        console.error("Failed to load pod1.glb:", err);
       }
-    );
 
-    // -------------------------------------------------------------
-    // NEXUS CHILD MODULES (BOX PLACEHOLDERS)
-    // -------------------------------------------------------------
-    function createModule(name, color) {
-      const geo = new THREE.BoxGeometry(0.5, 0.6, 0.25);
-      const mat = new THREE.MeshStandardMaterial({
-        color,
-        metalness: 0.4,
-        roughness: 0.5,
+      function populateTicker(news, quotes) {
+        const entries = [
+          ...news.map((item) => ({
+            text: `${item.title} // ${item.source}`,
+            type: "News",
+          })),
+          ...quotes.map((quote) => ({
+            text: `${quote.text} — ${quote.author}`,
+            type: "Quote",
+          })),
+        ];
+
+        if (!entries.length) {
+          entries.push({ text: "Awaiting interactive technology dispatch.", type: "Idle" });
+        }
+
+        const loopEntries = [...entries, ...entries];
+        tickerTrack.innerHTML = "";
+        loopEntries.forEach((entry) => {
+          const span = document.createElement("span");
+          span.className = "ticker-item";
+          span.dataset.type = entry.type;
+          span.textContent = entry.text;
+          tickerTrack.appendChild(span);
+        });
+      }
+
+      let quoteIndex = 0;
+
+      function setQuote(quote) {
+        quoteBox.classList.add("fading");
+        setTimeout(() => {
+          quoteBox.innerHTML = `<p>“${quote.text}”</p><span>— ${quote.author}</span>`;
+          quoteBox.classList.remove("fading");
+        }, 220);
+      }
+
+      function rotateQuote() {
+        quoteIndex = (quoteIndex + 1) % QUOTES.length;
+        setQuote(QUOTES[quoteIndex]);
+      }
+
+      setInterval(rotateQuote, 9000);
+
+      async function hydrateIntel() {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Syncing…";
+        const news = await fetchInteractiveNews();
+        renderInsights(news);
+        populateTicker(news, QUOTES);
+        summaryEl.textContent = buildSummary(news);
+        updatedStamp.textContent = `synced ${new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`;
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = "Refresh Briefing";
+      }
+
+      refreshBtn.addEventListener("click", hydrateIntel);
+      hydrateIntel();
+      setQuote(QUOTES[0]);
+
+      // -------------------------------------------------------------
+      // THREE.JS VISUAL HUB
+      // -------------------------------------------------------------
+      const MODEL_URL = "./assets/pod1.glb";
+
+      const canvas = document.getElementById("bg");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x050608, 0.15);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(4.5, 3, 7);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.target.set(0, 0.75, 0);
+      controls.minDistance = 3;
+      controls.maxDistance = 12;
+      controls.maxPolarAngle = Math.PI * 0.9;
+
+      const lightingState = { mode: "day" };
+
+      const hemiLight = new THREE.HemisphereLight(0x88aaff, 0x050608, 1.0);
+      hemiLight.position.set(0, 4, 0);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+      dirLight.position.set(5, 8, 3);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.set(2048, 2048);
+      scene.add(dirLight);
+
+      const rimLight = new THREE.DirectionalLight(0x66aaff, 0.4);
+      rimLight.position.set(-4, 3, -6);
+      scene.add(rimLight);
+
+      function applyLightingMode() {
+        if (lightingState.mode === "day") {
+          hemiLight.intensity = 1.0;
+          dirLight.intensity = 1.2;
+          rimLight.intensity = 0.4;
+          renderer.setClearColor(0x050608, 1);
+        } else {
+          hemiLight.intensity = 0.3;
+          dirLight.intensity = 0.7;
+          rimLight.intensity = 0.7;
+          renderer.setClearColor(0x020205, 1);
+        }
+      }
+      applyLightingMode();
+
+      const groundGeo = new THREE.CircleGeometry(8, 64);
+      const groundMat = new THREE.MeshStandardMaterial({
+        color: 0x06070b,
+        roughness: 0.95,
+        metalness: 0.1,
       });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.userData = {
-        type: "module",
-        label: name,
-      };
-      return mesh;
-    }
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-    const modules = [];
-    const radius = 2.6;
-    const moduleY = 0.6;
+      const nexusGroup = new THREE.Group();
+      scene.add(nexusGroup);
 
-    const computer = createModule("Computer", 0x4fc3f7);
-    computer.position.set(radius, moduleY, 0);
-    modules.push(computer);
+      const ringGeo = new THREE.TorusGeometry(1.8, 0.04, 16, 80);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: 0x7bdcff,
+        metalness: 0.8,
+        roughness: 0.1,
+        emissive: 0x05263a,
+        emissiveIntensity: 0.8,
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2;
+      ring.castShadow = true;
+      nexusGroup.add(ring);
 
-    const scanner = createModule("Scanner", 0xffb74d);
-    scanner.position.set(0, moduleY, radius);
-    modules.push(scanner);
+      let nexusCoreObject = null;
 
-    const avatar = createModule("Avatar", 0xba68c8);
-    avatar.position.set(-radius, moduleY, 0);
-    modules.push(avatar);
-
-    const arcade = createModule("Arcade Machine", 0xef5350);
-    arcade.position.set(0, moduleY, -radius);
-    modules.push(arcade);
-
-    modules.forEach((m) => {
-      m.lookAt(0, moduleY, 0);
-      nexusGroup.add(m);
-    });
-
-    // -------------------------------------------------------------
-    // INTERACTIVITY: RAYCASTING, TOOLTIP, CLICK
-    // -------------------------------------------------------------
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
-    const tooltip = document.getElementById("tooltip");
-    let hoveredObject = null;
-
-    function onPointerMove(event) {
-      const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    }
-
-    function onClick() {
-      if (!hoveredObject) return;
-      const data = hoveredObject.userData || {};
-
-      if (data.type === "module") {
-        console.log("Clicked module:", data.label);
-        zoomToObject(hoveredObject);
-        // TODO: open modal / navigate / trigger action
-      } else if (data.type === "nexus") {
-        console.log("Clicked Nexus");
-        zoomToObject(nexusGroup);
-      }
-    }
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("click", onClick);
-
-    // -------------------------------------------------------------
-    // CAMERA FOCUS HELPERS
-    // -------------------------------------------------------------
-    let cameraLerp = null;
-
-    function startCameraLerp(targetPosition, targetLookAt, duration = 0.9) {
-      const startPos = camera.position.clone();
-      const startTarget = controls.target.clone();
-      const startTime = performance.now();
-      cameraLerp = {
-        startPos,
-        startTarget,
-        endPos: targetPosition.clone(),
-        endTarget: targetLookAt.clone(),
-        duration,
-        startTime,
-      };
-    }
-
-    function zoomToObject(object3d) {
-      const box = new THREE.Box3().setFromObject(object3d);
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-      box.getSize(size);
-      box.getCenter(center);
-
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const distance = maxDim * 2.5 || 4;
-
-      const dir = new THREE.Vector3(0, 0.3, 1).normalize();
-      const targetPos = center.clone().add(dir.multiplyScalar(distance));
-
-      startCameraLerp(targetPos, center);
-    }
-
-    function resetCamera() {
-      startCameraLerp(
-        new THREE.Vector3(4.5, 3, 7),
-        new THREE.Vector3(0, 0.75, 0)
+      const loader = new GLTFLoader();
+      loader.load(
+        MODEL_URL,
+        (gltf) => {
+          const model = gltf.scene;
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (child.material && !child.material.emissive) {
+                child.material.emissive = new THREE.Color(0x000000);
+              }
+            }
+          });
+          model.scale.set(1.2, 1.2, 1.2);
+          model.position.set(0, 0, 0);
+          model.rotation.y = Math.PI;
+          model.userData = { type: "nexus", label: "Nexus Pod" };
+          nexusGroup.add(model);
+          nexusCoreObject = model;
+        },
+        undefined,
+        (err) => console.error("Failed to load pod1.glb:", err)
       );
-    }
 
-    document
-      .getElementById("reset-camera")
-      .addEventListener("click", resetCamera);
+      function createModule(name, color) {
+        const geo = new THREE.BoxGeometry(0.5, 0.6, 0.25);
+        const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.4, roughness: 0.5 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        mesh.userData = { type: "module", label: name };
+        return mesh;
+      }
 
-    document
-      .getElementById("zoom-nexus")
-      .addEventListener("click", () => zoomToObject(nexusGroup));
+      const modules = [];
+      const radius = 2.6;
+      const moduleY = 0.6;
 
-    document
-      .getElementById("toggle-lighting")
-      .addEventListener("click", () => {
+      const computer = createModule("Computer", 0x4fc3f7);
+      computer.position.set(radius, moduleY, 0);
+      modules.push(computer);
+
+      const scanner = createModule("Scanner", 0xffb74d);
+      scanner.position.set(0, moduleY, radius);
+      modules.push(scanner);
+
+      const avatar = createModule("Avatar", 0xba68c8);
+      avatar.position.set(-radius, moduleY, 0);
+      modules.push(avatar);
+
+      const arcade = createModule("Arcade Machine", 0xef5350);
+      arcade.position.set(0, moduleY, -radius);
+      modules.push(arcade);
+
+      modules.forEach((m) => {
+        m.lookAt(0, moduleY, 0);
+        nexusGroup.add(m);
+      });
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const tooltip = document.getElementById("tooltip");
+      let hoveredObject = null;
+
+      function onPointerMove(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      }
+
+      function onClick() {
+        if (!hoveredObject) return;
+        const data = hoveredObject.userData || {};
+        if (data.type === "module") {
+          zoomToObject(hoveredObject);
+        } else if (data.type === "nexus") {
+          zoomToObject(nexusGroup);
+        }
+      }
+
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("click", onClick);
+
+      let cameraLerp = null;
+
+      function startCameraLerp(targetPosition, targetLookAt, duration = 0.9) {
+        const startPos = camera.position.clone();
+        const startTarget = controls.target.clone();
+        const startTime = performance.now();
+        cameraLerp = {
+          startPos,
+          startTarget,
+          endPos: targetPosition.clone(),
+          endTarget: targetLookAt.clone(),
+          duration,
+          startTime,
+        };
+      }
+
+      function zoomToObject(object3d) {
+        const box = new THREE.Box3().setFromObject(object3d);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const distance = maxDim * 2.5 || 4;
+        const dir = new THREE.Vector3(0, 0.3, 1).normalize();
+        const targetPos = center.clone().add(dir.multiplyScalar(distance));
+        startCameraLerp(targetPos, center);
+      }
+
+      function resetCamera() {
+        startCameraLerp(new THREE.Vector3(4.5, 3, 7), new THREE.Vector3(0, 0.75, 0));
+      }
+
+      document.getElementById("reset-camera").addEventListener("click", resetCamera);
+      document.getElementById("zoom-nexus").addEventListener("click", () => zoomToObject(nexusGroup));
+      document.getElementById("toggle-lighting").addEventListener("click", () => {
         lightingState.mode = lightingState.mode === "day" ? "night" : "day";
         applyLightingMode();
       });
 
-    // -------------------------------------------------------------
-    // ANIMATION LOOP
-    // -------------------------------------------------------------
-    const clock = new THREE.Clock();
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      const t = clock.getElapsedTime();
-
-      // Bouncy Nexus
-      nexusGroup.position.y = Math.sin(t * 2.0) * 0.15 + 0.5;
-      ring.rotation.z += 0.003;
-
-      modules.forEach((m, i) => {
-        m.position.y = moduleY + Math.sin(t * 2 + i) * 0.08;
+      const idleState = { lastInteraction: performance.now() - 8000 };
+      const interactionEvents = ["pointerdown", "pointerup", "wheel", "touchstart", "touchmove", "keydown"];
+      interactionEvents.forEach((evt) => {
+        window.addEventListener(
+          evt,
+          () => {
+            idleState.lastInteraction = performance.now();
+          },
+          { passive: true }
+        );
       });
+      controls.addEventListener("start", () => (idleState.lastInteraction = performance.now()));
 
-      // Hover / raycast
-      raycaster.setFromCamera(pointer, camera);
-      const pickables = [
-        ...(nexusCoreObject ? [nexusCoreObject] : []),
-        ...modules,
-      ];
+      const clock = new THREE.Clock();
 
-      const intersects = raycaster.intersectObjects(pickables, true);
+      function animate() {
+        requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+        const idleSeconds = (performance.now() - idleState.lastInteraction) / 1000;
+        const idleFactor = THREE.MathUtils.clamp(idleSeconds / 3, 0, 1);
+        const bounce = Math.sin(t * 2.0) * 0.15 * idleFactor;
+        nexusGroup.position.y = 0.5 + bounce;
+        ring.rotation.z += 0.003;
+        modules.forEach((m, i) => {
+          m.position.y = moduleY + Math.sin(t * 2 + i) * 0.08 * idleFactor;
+        });
 
-      if (intersects.length > 0) {
-        const hit = findTopLevelMesh(intersects[0].object);
-
-        if (hoveredObject !== hit) {
+        raycaster.setFromCamera(pointer, camera);
+        const pickables = [...(nexusCoreObject ? [nexusCoreObject] : []), ...modules];
+        const intersects = raycaster.intersectObjects(pickables, true);
+        if (intersects.length > 0) {
+          const hit = findTopLevelMesh(intersects[0].object);
+          if (hoveredObject !== hit) {
+            clearHover();
+            hoveredObject = hit;
+            applyHover(hoveredObject);
+          }
+        } else {
           clearHover();
-          hoveredObject = hit;
-          applyHover(hoveredObject);
+          hoveredObject = null;
+          tooltip.style.opacity = 0;
         }
-      } else {
-        clearHover();
-        hoveredObject = null;
-        tooltip.style.opacity = 0;
+
+        if (hoveredObject && hoveredObject.userData?.label) {
+          tooltip.textContent = hoveredObject.userData.label;
+          tooltip.style.left = `${(pointer.x * 0.5 + 0.5) * window.innerWidth}px`;
+          tooltip.style.top = `${(-pointer.y * 0.5 + 0.5) * window.innerHeight}px`;
+          tooltip.style.opacity = 1;
+        }
+
+        if (cameraLerp) {
+          const now = performance.now();
+          const elapsed = (now - cameraLerp.startTime) / 1000;
+          const tNorm = Math.min(elapsed / cameraLerp.duration, 1);
+          const tSmooth = tNorm * tNorm * (3 - 2 * tNorm);
+          camera.position.lerpVectors(cameraLerp.startPos, cameraLerp.endPos, tSmooth);
+          controls.target.lerpVectors(cameraLerp.startTarget, cameraLerp.endTarget, tSmooth);
+          if (tNorm >= 1) cameraLerp = null;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
       }
 
-      // Tooltip follow
-      if (hoveredObject && hoveredObject.userData && hoveredObject.userData.label) {
-        tooltip.textContent = hoveredObject.userData.label;
-        tooltip.style.left = `${(pointer.x * 0.5 + 0.5) * window.innerWidth}px`;
-        tooltip.style.top = `${(-pointer.y * 0.5 + 0.5) * window.innerHeight}px`;
-        tooltip.style.opacity = 1;
+      function findTopLevelMesh(obj) {
+        let cur = obj;
+        while (cur.parent && !cur.userData.type) {
+          cur = cur.parent;
+        }
+        return cur;
       }
 
-      // Camera lerp
-      if (cameraLerp) {
-        const now = performance.now();
-        const elapsed = (now - cameraLerp.startTime) / 1000;
-        const tNorm = Math.min(elapsed / cameraLerp.duration, 1);
-        const tSmooth = tNorm * tNorm * (3 - 2 * tNorm);
-
-        camera.position.lerpVectors(
-          cameraLerp.startPos,
-          cameraLerp.endPos,
-          tSmooth
-        );
-        controls.target.lerpVectors(
-          cameraLerp.startTarget,
-          cameraLerp.endTarget,
-          tSmooth
-        );
-
-        if (tNorm >= 1) cameraLerp = null;
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    function findTopLevelMesh(obj) {
-      // For glTF, intersected object might be a child; climb up until we
-      // find something with userData.type or hit the root.
-      let cur = obj;
-      while (cur.parent && !cur.userData.type) {
-        cur = cur.parent;
-      }
-      return cur;
-    }
-
-    function applyHover(obj) {
-      if (!obj || !obj.material) return;
-
-      obj.scale.set(1.05, 1.05, 1.05);
-
-      if (Array.isArray(obj.material)) {
-        obj.material.forEach((m) => {
+      function applyHover(obj) {
+        if (!obj || !obj.material) return;
+        obj.scale.set(1.05, 1.05, 1.05);
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+        materials.forEach((m) => {
           if (!m.emissive) return;
           if (m.userData?._baseEmissive === undefined) {
             m.userData = m.userData || {};
@@ -512,56 +958,33 @@
           }
           m.emissive.setHex(0xffffff);
         });
-      } else {
-        const m = obj.material;
-        if (m.emissive) {
-          if (m.userData?._baseEmissive === undefined) {
-            m.userData = m.userData || {};
-            m.userData._baseEmissive = m.emissive.getHex();
-          }
-          m.emissive.setHex(0xffffff);
-        }
       }
-    }
 
-    function clearHover() {
-      if (!hoveredObject || !hoveredObject.material) return;
-
-      hoveredObject.scale.set(1, 1, 1);
-
-      if (Array.isArray(hoveredObject.material)) {
-        hoveredObject.material.forEach((m) => {
+      function clearHover() {
+        if (!hoveredObject || !hoveredObject.material) return;
+        hoveredObject.scale.set(1, 1, 1);
+        const materials = Array.isArray(hoveredObject.material)
+          ? hoveredObject.material
+          : [hoveredObject.material];
+        materials.forEach((m) => {
           if (!m.emissive) return;
           const base =
-            (m.userData && m.userData._baseEmissive) !== undefined
+            m.userData && m.userData._baseEmissive !== undefined
               ? m.userData._baseEmissive
               : 0x000000;
           m.emissive.setHex(base);
         });
-      } else {
-        const m = hoveredObject.material;
-        if (m.emissive) {
-          const base =
-            (m.userData && m.userData._baseEmissive) !== undefined
-              ? m.userData._baseEmissive
-              : 0x000000;
-          m.emissive.setHex(base);
-        }
       }
-    }
 
-    animate();
+      animate();
 
-    // -------------------------------------------------------------
-    // RESIZE
-    // -------------------------------------------------------------
-    window.addEventListener("resize", () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    });
-  </script>
-</body>
+      window.addEventListener("resize", () => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+      });
+    </script>
+  </body>
 </html>
